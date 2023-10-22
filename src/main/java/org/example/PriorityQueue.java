@@ -45,7 +45,7 @@ public class PriorityQueue {
                 return data.get(counter);
             }
             else{
-                return null;
+                return InputPair.inputPairTimeInf();//InputPair.inputPairTimeInf();//not sure if correct
             }
         }
         finally{
@@ -54,7 +54,10 @@ public class PriorityQueue {
     }
 
     public InputPair peek(){
-            return data.get(counter);
+            if(counter < data.size())
+                return data.get(counter);
+            else
+                return InputPair.inputPairTimeInf();//not sure if correct
     }
 
 

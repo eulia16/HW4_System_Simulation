@@ -20,38 +20,73 @@ public class AtomicModelCoffeeMachine {
 
     }
 
-    public void simulate() throws InsufficientFundsException {
+    public void simulate() throws InsufficientFundsException, InterruptedException {
 
         for(;;){
+            Thread.sleep(1000);
+
+
+
             //if the next event is external
-            if(this.nextInternalEvent.continuousTime < queueOfData.peek().continuousTime){
-                deltaExt(queueOfData.pop());
+                System.out.println("internal event continuous time: " + this.nextInternalEvent.continuousTime
+                        + ", next queue data continuous time: " + queueOfData.peek().continuousTime);
+                System.out.println("data at new start of event evaluation " + "q: " + q + ", n: " + n + ",  d: " + d + ", v: " + value);
+
+
+
+            if(this.nextInternalEvent.continuousTime > queueOfData.peek().continuousTime){
+                System.out.println("external event");
+                InputPair inputPair = queueOfData.pop();
+                deltaExt(inputPair);
                 //then call time advance
                 double timeAdvance = timeAdvance();
-                this.nextInternalEvent = new InputPair(timeAdvance, 0, '-');
+                if(timeAdvance == Double.POSITIVE_INFINITY)
+                    this.nextInternalEvent = InputPair.inputPairTimeInf();
+                else
+                    this.nextInternalEvent = new InputPair(timeAdvance + inputPair.continuousTime, 0, '-');
             }
             //if the next event is internal
-            else if(this.nextInternalEvent.continuousTime > queueOfData.peek().continuousTime){
+            else if(this.nextInternalEvent.continuousTime < queueOfData.peek().continuousTime){
+                System.out.println("internal event");
                 //lambda before delta
                 lambda();
                 deltaInt();
                 double timeAdvance = timeAdvance();
-                this.nextInternalEvent = new InputPair(timeAdvance, 0, '-');
+                if(timeAdvance == Double.POSITIVE_INFINITY)
+                    this.nextInternalEvent = InputPair.inputPairTimeInf();
+                else
+                    this.nextInternalEvent = new InputPair(timeAdvance + this.nextInternalEvent.continuousTime, 0, '-');
+
             }
             //else we have a confluent event
             else {
+                System.out.println("confluent event");
                 lambda();
-                deltaCon(queueOfData.pop());
+                InputPair inputPair = queueOfData.pop();
+                deltaCon(inputPair);
                 double timeAdvance = timeAdvance();
-                this.nextInternalEvent = new InputPair(timeAdvance, 0, '-');
+                if(timeAdvance == Double.POSITIVE_INFINITY)
+                    this.nextInternalEvent = InputPair.inputPairTimeInf();
+                else
+                    this.nextInternalEvent = new InputPair(timeAdvance + inputPair.continuousTime, 0, '-');
+
+            }
+
+            if(this.nextInternalEvent.continuousTime == Double.POSITIVE_INFINITY && queueOfData.peek().continuousTime == Double.POSITIVE_INFINITY){
+                System.out.println("We have reached the end of the input data, exiting program now");
+                System.exit(0);
             }
 
         }
+
+
 
     }
 
 
     public void deltaInt() throws InsufficientFundsException {
+        System.out.println("inside delta internal function");
+
         int valueToBeDispersedInCoins = this.value % 100;
         //if the value is zero, the input was a mod of 100, nothing else to do
         if(valueToBeDispersedInCoins == 0)
@@ -64,13 +99,13 @@ public class AtomicModelCoffeeMachine {
         int divideByQuarterValue = valueToBeDispersedInCoins / QUARTER_VALUE;
 
         if(divideByQuarterValue > this.q)
-            numLoopsToAddForRespectiveLoops =  this.q;
+            numLoopsToAddForRespectiveLoops = this.q;
         else
             numLoopsToAddForRespectiveLoops = divideByQuarterValue;
 
         if(this.q !=0 ) {
             valueToBeDispersedInCoins -= (numLoopsToAddForRespectiveLoops * QUARTER_VALUE);
-            this.q -= (numLoopsToAddForRespectiveLoops * QUARTER_VALUE);
+            this.q -= (numLoopsToAddForRespectiveLoops);
         }
 
         //for dimes
@@ -83,7 +118,7 @@ public class AtomicModelCoffeeMachine {
 
         if(this.d !=0 ) {
             valueToBeDispersedInCoins -= (numLoopsToAddForRespectiveLoops * DIME_VALUE);
-            this.d -= (numLoopsToAddForRespectiveLoops * DIME_VALUE);
+            this.d -= (numLoopsToAddForRespectiveLoops);
         }
 
         //for nickels
@@ -96,7 +131,7 @@ public class AtomicModelCoffeeMachine {
 
         if(this.n !=0 ) {
             valueToBeDispersedInCoins -= (numLoopsToAddForRespectiveLoops * NICKEL_VALUE);
-            this.n -= (numLoopsToAddForRespectiveLoops * NICKEL_VALUE);
+            this.n -= (numLoopsToAddForRespectiveLoops);
 
         }
 
@@ -108,23 +143,36 @@ public class AtomicModelCoffeeMachine {
         //reset the value as well
         this.value = 0;
 
+        System.out.println("data after delta internal: " + "q: " + q + ", n: " + n + ",  d: " + d + ", v: " + value);
+
+        if(queueOfData.peek() == null){
+            System.out.println("We have reached the end of the fed in data, exiting program now");
+            System.exit(0);
+        }
+
 
     }
 
     public void deltaCon(InputPair inputPair) throws InsufficientFundsException {
-        if(this.nextInternalEvent.constantTime < inputPair.constantTime){
+        System.out.println("inside delta confluent function");
+
+        if(this.nextInternalEvent.constantTime < inputPair.constantTime) {
             deltaExt(inputPair);
             deltaInt();
         }
-        //not sure if this is right, but we'll leave it rn
         else{
             deltaInt();
             deltaExt(inputPair);
         }
 
+        System.out.println("Data after delta confluent" + "q: " + q + ", n: " + n + ",  d: " + d + ", v: " + value);
+
+
+
     }
 
     public void deltaExt(InputPair input){
+        System.out.println("inside delta external function");
 
         if(input.change == 'q'){
             q++;
@@ -139,20 +187,20 @@ public class AtomicModelCoffeeMachine {
             value += 10;
         }
 
+        System.out.println("Data after delta external " + "q: " + q + ", n: " + n + ",  d: " + d + ", v: " + value);
+
     }
 
     //{coffee for every 100 cents in v} union {a suitable combination of q, n, d representing v % 100}.
     public void lambda() throws InsufficientFundsException {
-        System.out.println("fuckmesilly input: Daddy;\n" +
-                "        ReturnTree I'm a chode\"\n" +
-                "    '" + " cough cough... idk what that was...anywaysss here is the number of coffee's you will receive " +
+        System.out.println("the number of coffee's you will receive " +
                  getNumCoffees());
         System.out.println("And here is the change you will receive: " + getChange());
 
     }
 
     public int getNumCoffees(){
-        return (this.value % COFFEE_VALUE);
+        return (this.value / COFFEE_VALUE);
     }
     private List<Character> getNumQuarters(List<Character> ret, int numLoops){
         for(int i=0; i< numLoops; ++i){
