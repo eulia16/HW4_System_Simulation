@@ -25,8 +25,6 @@ public class AtomicModelCoffeeMachine {
         for(;;){
             Thread.sleep(1000);
 
-
-
             //if the next event is external
                 System.out.println("internal event continuous time: " + this.nextInternalEvent.continuousTime
                         + ", next queue data continuous time: " + queueOfData.peek().continuousTime);

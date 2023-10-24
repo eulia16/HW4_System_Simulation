@@ -10,6 +10,7 @@ public class App
 
         AtomicModelCoffeeMachine coffeeMachine = new AtomicModelCoffeeMachine();
         coffeeMachine.simulate();
+        System.out.println("test");
 
     }
 }
